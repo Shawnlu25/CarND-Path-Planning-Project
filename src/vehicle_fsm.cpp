@@ -2,7 +2,10 @@
 #include <cassert>
 
 // Lane Direction Definition
-map<string, int> VehicleFSM::lane_direction = {{"PLCL", -1}, {"LCL", -1}, {"PLCR", 1}, {"PLCR", -1}};
+map<VehicleFSM::State, int> VehicleFSM::lane_direction = {
+  {VehicleFSM::State::PLCL, -1}, {VehicleFSM::State::LCL, -1}, 
+  {VehicleFSM::State::PLCR, 1}, {VehicleFSM::State::LCR, -1}
+};
 
 // Destructor
 VehicleFSM::~VehicleFSM(){}
@@ -12,6 +15,7 @@ VehicleFSM::VehicleFSM(const double &max_speed, const double &max_accel, const i
   this->max_speed = max_speed;
   this->max_accel = max_accel;
   this->max_lane  = max_lane;
+  this->cur_state = VehicleFSM::State::KL;
 }
 
 bool VehicleFSM::is_state_initialized() {
@@ -25,26 +29,26 @@ void VehicleFSM::initialize_state(const int &cur_lane) {
   this->state_initialized = true;
 }
 
-vector<string> VehicleFSM::successor_states() {
-  vector<string> next_states;
+vector<VehicleFSM::State> VehicleFSM::successor_states() {
+  vector<VehicleFSM::State> next_states;
 
-  next_states.push_back("KL");
-  if (this->cur_state.compare("KL") == 0) { 
+  next_states.push_back(VehicleFSM::State::KL);
+  if (this->cur_state == VehicleFSM::State::KL) { 
   	if (this->cur_lane != 0) {
-  	  next_states.push_back("PLCL");
+  	  next_states.push_back(VehicleFSM::State::PLCL);
   	}
   	if (this->cur_lane != this->max_lane) {
-  	  next_states.push_back("PLCR");
+  	  next_states.push_back(VehicleFSM::State::PLCR);
   	}
-  } else if (this->cur_state.compare("PLCL") == 0) {
+  } else if (this->cur_state == VehicleFSM::State::PLCL) {
   	if (this->cur_lane != 0) {
-  	  next_states.push_back("PLCL");
-  	  next_states.push_back("LCL");
+  	  next_states.push_back(VehicleFSM::State::PLCL);
+  	  next_states.push_back(VehicleFSM::State::LCL);
   	}
-  } else if (this->cur_state.compare("PLCR") == 0) {
+  } else if (this->cur_state == VehicleFSM::State::PLCR) {
   	if (this->cur_lane != this->max_lane) {
-  	  next_states.push_back("PLCR");
-  	  next_states.push_back("LCR");
+  	  next_states.push_back(VehicleFSM::State::PLCR);
+  	  next_states.push_back(VehicleFSM::State::LCR);
   	}
   }
 

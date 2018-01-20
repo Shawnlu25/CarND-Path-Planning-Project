@@ -13,9 +13,16 @@ class VehicleFSM {
   supported states are : KL, LCL, LCR, PLCL, PLCR
   */
   public:
-  	static map<string, int> lane_direction;    // lane direction, see vehicle_fsm.cpp for more detail
+  	enum State {
+  	  KL,
+  	  PLCL,
+  	  LCL,
+  	  PLCR,
+  	  LCR
+  	};
+  	static map<State, int> lane_direction;    // lane direction, see vehicle_fsm.cpp for more detail
 
-  	string cur_state;     // current fsm state
+  	State cur_state;     // current fsm state
   	int cur_lane;         // vehicle's current lane
   	int max_lane;         // max lane number that is drivable
   	double max_speed;     // max speed of the vehicle
@@ -27,14 +34,14 @@ class VehicleFSM {
   	// desctructor
   	virtual ~VehicleFSM();
 
-  	// 
+  	// check / initialize current state of FSM, including the initial vehicle state
   	bool is_state_initialized();
   	void initialize_state(const int &cur_lane);
 
   private:
   	bool state_initialized = false;
 
-  	vector<string> successor_states();
+  	vector<State> successor_states();
 };
 
 #endif

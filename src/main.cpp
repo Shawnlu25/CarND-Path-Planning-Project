@@ -11,6 +11,8 @@
 #include "spline.h"
 #include "vehicle_fsm.h"
 
+#include "common.h"
+
 using namespace std;
 
 // for convenience
@@ -292,10 +294,10 @@ int main() {
 
 
           for (int i = 0; i < ptsx.size(); i++) {
-            double shift_x = ptsx[i] - ref_x;
-            double shift_y = ptsy[i] - ref_y;
-            ptsx[i] = shift_x * cos(0 - ref_yaw) - shift_y * sin(0 - ref_yaw);
-            ptsy[i] = shift_x * sin(0 - ref_yaw) + shift_y * cos(0 - ref_yaw); 
+            vector<double> transformed_pt = 
+              transform_to_ref_coord(ptsx[i], ptsy[i], ref_x, ref_y, ref_yaw);
+            ptsx[i] = transformed_pt[0];
+            ptsy[i] = transformed_pt[1];
           }
 
           tk::spline sp;
@@ -320,18 +322,12 @@ int main() {
             double y_point = sp(x_point);
 
             x_add_on = x_point;
+            
+            vector<double> generated_pt = 
+              transform_from_ref_coord(x_point, y_point, ref_x, ref_y, ref_yaw);
 
-            double x_ref = x_point;
-            double y_ref = y_point;
-
-            x_point = (x_ref * cos(ref_yaw) - y_ref*sin(ref_yaw));
-            y_point = (x_ref * sin(ref_yaw) + y_ref*cos(ref_yaw));            
-
-            x_point += ref_x;
-            y_point += ref_y;
-
-            next_x_vals.push_back(x_point);
-            next_y_vals.push_back(y_point);       
+            next_x_vals.push_back(generated_pt[0]); //x
+            next_y_vals.push_back(generated_pt[1]); //y      
           }
           cout << "Done" << endl;
         	msgJson["next_x"] = next_x_vals;
