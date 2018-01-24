@@ -17,6 +17,7 @@
 
 using namespace trajectories;
 using namespace predictions;
+using namespace vehicle_fsm;
 using namespace std;
 
 // for convenience
@@ -83,10 +84,10 @@ int main() {
   };
 
   SplineTrajectoryGenerator traj_gen = SplineTrajectoryGenerator(map_waypoints);
-  VehicleFSM vehicle_fsm = VehicleFSM(22.2, 8.0, 8.0, 2);
   SensorFusionPredictor predictor = SensorFusionPredictor(map_waypoints);
+  VehicleFSM vehicle_fsm = VehicleFSM(&predictor);  
 
-  h.onMessage([&traj_gen, &predictor, &vehicle_fsm, &map_waypoints,&map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy]
+  h.onMessage([&traj_gen, &predictor, &vehicle_fsm, &map_waypoints, &map_waypoints_x, &map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy]
              (uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
               uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
@@ -132,56 +133,24 @@ int main() {
         	auto sensor_fusion = j[1]["sensor_fusion"];
 
         	json msgJson;
+          
+          if (previous_path_x.size() < 50) {
+            TrajectoryEndRef traj_end_ref = traj_gen.get_traj_end_ref_data(cur_localization, {previous_path_x, previous_path_y});
 
-          // Initialize FSM if not done so
-          if (!vehicle_fsm.is_state_initialized()) {
-            vehicle_fsm.initialize_state(current_lane_from_d(car_d), car_speed, 0);
-          }
+            Behavior behavior = vehicle_fsm.get_behavior(traj_end_ref, sensor_fusion, previous_path_x.size() * 0.02);
 
+            Trajectory traj = traj_gen.generate_trajectory({previous_path_x, previous_path_y}, behavior,
+              cur_localization, sensor_fusion);
+            msgJson["next_x"] = traj.pts_x;//next_x_vals;
+            msgJson["next_y"] = traj.pts_y;//next_y_vals;
 
+          }else{
+            msgJson["next_x"] = previous_path_x;//next_x_vals;
+            msgJson["next_y"] = previous_path_y;//next_y_vals;
 
-          Behavior behavior = {1, -1, -1, 0.0};
-          vector<double> ref_data = get_path_end_ref_data(cur_localization, previous_path);
-          double ref_x = ref_data[0];
-          double ref_y = ref_data[1];
-          double ref_yaw = ref_data[2];
-
-          double ref_s = 0.0;
-          double ref_d = 0.0;
-          if (end_path_s == 0 && end_path_d == 0) {
-            vector<double> ref_frenet = getFrenet(ref_x, ref_y, ref_yaw, map_waypoints.x, map_waypoints.y);
-            ref_s = ref_frenet[0];
-            ref_d = ref_frenet[1];
-          } else {
-            ref_s = end_path_s;
-            ref_d = end_path_d;
           }
           
-          //cout << "REF_D|" << ref_d << "|" << current_lane_from_d(ref_d) << endl;
-          vector<double> front_vehicle_sf = predictor.get_front_vehicle_sf_in_time(
-            sensor_fusion, current_lane_from_d(ref_d), ref_s, previous_path_x.size()*0.02);
-
-          if (front_vehicle_sf.size() != 0) {
-            double fv_vx = front_vehicle_sf[SensorFusionIndex::VX];
-            double fv_vy = front_vehicle_sf[SensorFusionIndex::VY];
-            behavior.target_speed = sqrt(fv_vx * fv_vx + fv_vy * fv_vy);
-            behavior.target_leading_vehicle_id = front_vehicle_sf[SensorFusionIndex::ID];
-            if (front_vehicle_sf[SensorFusionIndex::S] - ref_s < 0) {
-              behavior.distance_to_target_vehicle = front_vehicle_sf[SensorFusionIndex::S] - ref_s + 6945.5;
-            } else {
-              behavior.distance_to_target_vehicle = front_vehicle_sf[SensorFusionIndex::S] - ref_s;               
-            }            
-            cout << "TARGET|" << front_vehicle_sf[SensorFusionIndex::ID] <<"|" << behavior.target_speed <<"|" << behavior.distance_to_target_vehicle<< endl;                        
-          }else {
-            cout << "TARGET|" << -1 <<"|" << behavior.target_speed << endl;                                    
-          }
-
-          Trajectory traj = traj_gen.generate_trajectory({previous_path_x, previous_path_y}, behavior,
-            cur_localization, sensor_fusion);
-
-        	msgJson["next_x"] = traj.pts_x;//next_x_vals;
-        	msgJson["next_y"] = traj.pts_y;//next_y_vals;
-
+        	
         	auto msg = "42[\"control\","+ msgJson.dump()+"]";
 
         	//this_thread::sleep_for(chrono::milliseconds(1000));

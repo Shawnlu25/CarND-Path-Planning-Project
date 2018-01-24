@@ -53,15 +53,15 @@ class SplineTrajectoryGenerator {
 private:
   MapWayPoints map_waypoints;
 
-  TrajectoryEndRef get_traj_end_ref_data(const LocalizationState &localization,
-      const Trajectory &previous_traj);
   Trajectory transform_traj_to_ref_coord(const TrajectoryEndRef &end_ref_data, const Trajectory &traj);
   Trajectory sample_points_on_lane(const TrajectoryEndRef &end_ref_data, int lane_num, double from_s);
-  Trajectory generate_keep_lane_trajectory(const TrajectoryEndRef &end_ref_data, double target_speed, double max_s);
+  Trajectory generate_keep_lane_trajectory(const TrajectoryEndRef &end_ref_data, double target_speed, double max_s, int lane_num);
 
 public:
   SplineTrajectoryGenerator(MapWayPoints &map_waypoints);
 
+  TrajectoryEndRef get_traj_end_ref_data(const LocalizationState &localization,
+      const Trajectory &previous_traj);
   Trajectory generate_trajectory(const Trajectory &previous_traj, 
       const Behavior &behavior, const LocalizationState &localization, 
       const vector<vector<double>> &sensor_fusions);

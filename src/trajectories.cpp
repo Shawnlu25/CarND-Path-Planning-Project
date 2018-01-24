@@ -20,8 +20,8 @@ const double Constants::approach_speed_delta = 1.0;
 const int Constants::max_lane = 2;
 
 const double Constants::vehicle_radius = 2.0;
-const double Constants::vehicle_buffer = Constants::vehicle_radius * 4.5;
-const double Constants::safe_buffer = Constants::vehicle_radius * 13;
+const double Constants::vehicle_buffer = Constants::vehicle_radius * 8;
+const double Constants::safe_buffer = Constants::vehicle_radius * 18;
 
 SplineTrajectoryGenerator::SplineTrajectoryGenerator(MapWayPoints &map_waypoints) {
 	this->map_waypoints = map_waypoints;
@@ -68,7 +68,7 @@ TrajectoryEndRef SplineTrajectoryGenerator::get_traj_end_ref_data(const Localiza
 Trajectory SplineTrajectoryGenerator::sample_points_on_lane(const TrajectoryEndRef &end_ref_data, int lane_num, double from_s) {
 	Trajectory result = {{}, {}};
 	for (int i = 1; i < 6; i++) {
-		vector<double> next_wp = getXY(from_s + Constants::max_speed * i, lane_num * 4.0 + 2, 
+		vector<double> next_wp = getXY(from_s + Constants::max_speed * i * 1.3 , lane_num * 4.0 + 2, 
 			map_waypoints.s, map_waypoints.x, map_waypoints.y);
 		result.pts_x.push_back(next_wp[0]);
 		result.pts_y.push_back(next_wp[1]);		
@@ -87,8 +87,8 @@ Trajectory SplineTrajectoryGenerator::transform_traj_to_ref_coord(const Trajecto
 }
 
 Trajectory SplineTrajectoryGenerator::generate_keep_lane_trajectory(const TrajectoryEndRef &end_ref_data, 
-		double target_speed, double max_s) {
-	int ref_lane = current_lane_from_d(end_ref_data.d);
+		double target_speed, double max_s, int lane_num) {
+	int ref_lane = lane_num;//current_lane_from_d(end_ref_data.d);
 
 	Trajectory sampled_future_traj = sample_points_on_lane(end_ref_data, ref_lane, end_ref_data.s);
 	Trajectory spline_points = {{}, {}};
@@ -116,7 +116,12 @@ Trajectory SplineTrajectoryGenerator::generate_keep_lane_trajectory(const Trajec
 		cur_target_speed = min(target_speed + Constants::approach_speed_delta, Constants::max_speed);
 	}
 	//cout << "SPEED|ACCEL|" << cur_speed << "|" << cur_accel << endl;
-	for (int i = 1 ; i <= Constants::max_step; i++) {
+
+	int step = Constants::max_step;
+	if (lane_num != current_lane_from_d(end_ref_data.d)) {
+		step *= 2;
+	}
+	for (int i = 1 ; i <= step; i++) {
 		if (max_s >= 0) {
 			if (cur_x + cur_speed * Constants::timestep > max_s ) {
 				cur_target_speed = target_speed - Constants::approach_speed_delta;
@@ -125,6 +130,8 @@ Trajectory SplineTrajectoryGenerator::generate_keep_lane_trajectory(const Trajec
 			} else {
 				cur_target_speed = Constants::max_speed;
 			}
+		} else {
+			cur_target_speed = target_speed - Constants::approach_speed_delta;
 		}
 		//cout << "SPEED|ACCEL|" << cur_speed << "|" << cur_accel << "|" << cur_target_speed << "|" << max_s << endl;
 		if (cur_speed <= cur_target_speed) {
@@ -148,12 +155,11 @@ Trajectory SplineTrajectoryGenerator::generate_keep_lane_trajectory(const Trajec
 Trajectory SplineTrajectoryGenerator::generate_trajectory(const Trajectory &previous_traj, 
 			const Behavior &behavior, const LocalizationState &localization, 
 			const vector<vector<double>> &sensor_fusions) {
-	int ref_lane = 1;
 
 	// duration = how far to look ahead in terms of time
 	double duration = Constants::timestep * (Constants::max_step - previous_traj.pts_x.size());
 
-	// Target vehicle predictions, if available
+	/*// Target vehicle predictions, if available
 	vector<double> target_vehicle_sf;
 	double target_vehicle_speed;
 	double target_vehicle_future_x;
@@ -168,11 +174,11 @@ Trajectory SplineTrajectoryGenerator::generate_trajectory(const Trajectory &prev
 		target_vehicle_speed = sqrt(vx*vx + vy*vy);
 		target_vehicle_future_x = x + vx * duration;
 		target_vehicle_future_y = y + vy * duration;
-	}
+	}*/
 
 	// Reference point data
 	TrajectoryEndRef traj_end_ref = this->get_traj_end_ref_data(localization, previous_traj);
-
+	int ref_lane = current_lane_from_d(traj_end_ref.d);
 	// Re-using populated trajectory
 	Trajectory result_trajectory = {{}, {}};
 	for (int i = 0; i < previous_traj.pts_x.size(); i++) {
@@ -185,18 +191,20 @@ Trajectory SplineTrajectoryGenerator::generate_trajectory(const Trajectory &prev
 
 	// Different trajectory for different behavior
 	if (behavior.target_lane_id == ref_lane && behavior.target_leading_vehicle_id < 0) {
-		new_trajectory = this->generate_keep_lane_trajectory(traj_end_ref, Constants::max_speed, -1);
+		new_trajectory = this->generate_keep_lane_trajectory(traj_end_ref, Constants::max_speed, 1000, ref_lane);
 	} else if (behavior.target_lane_id == ref_lane && behavior.target_leading_vehicle_id >= 0) {
 		double max_s = behavior.distance_to_target_vehicle - Constants::vehicle_buffer;
-		cout << max_s << endl;
-		new_trajectory = this->generate_keep_lane_trajectory(traj_end_ref, behavior.target_speed-Constants::approach_speed_delta, max_s);		
+		new_trajectory = this->generate_keep_lane_trajectory(traj_end_ref, behavior.target_speed-Constants::approach_speed_delta, max_s, ref_lane);		
 	} else if (behavior.target_lane_id == ref_lane && behavior.target_speed > 0) {
-		new_trajectory = this->generate_keep_lane_trajectory(traj_end_ref, behavior.target_speed, -1);
+		new_trajectory = this->generate_keep_lane_trajectory(traj_end_ref, behavior.target_speed, 1000, ref_lane);
+	} else if (behavior.target_lane_id != ref_lane) {
+		cout << "CHANGE LANE TO " << behavior.target_lane_id << endl;
+		new_trajectory = this->generate_keep_lane_trajectory(traj_end_ref, behavior.target_speed, 10, behavior.target_lane_id);
 	}
 
 	// Append new trajectory
 	for (int i = 0; i < new_trajectory.pts_x.size(); i++) {	
-		if (result_trajectory.pts_x.size() >= Constants::max_step) {
+		if (result_trajectory.pts_x.size() >= Constants::max_step && behavior.target_lane_id == ref_lane) {
 			break;
 		}
 		result_trajectory.pts_x.push_back(new_trajectory.pts_x[i]);

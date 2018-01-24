@@ -4,51 +4,61 @@
 #include <string>
 #include <map>
 #include <vector>
+#include "trajectories.h"
+#include "predictions.h"
 
+using namespace trajectories;
+using namespace predictions;
 using namespace std;
+
+namespace vehicle_fsm{
+class StateCostFunctions {
+public:
+  static double forward_lane_speed_cost(const TrajectoryEndRef &traj_end_ref, 
+      const vector<vector<double>> &sensor_fusions, SensorFusionPredictor &predictor, 
+      Behavior behavior, double timespan);
+  static double forward_lane_distance_cost(const TrajectoryEndRef &traj_end_ref, 
+      const vector<vector<double>> &sensor_fusions, SensorFusionPredictor &predictor, 
+      Behavior behavior, double timespan);  
+
+};
 
 class VehicleFSM {
   /**
   Provides an interface for vehicle behavior planning, the current
   supported states are : KL, LCL, LCR, PLCL, PLCR
   */
-  public:
-  	enum State {
-  	  KL,
-  	  PLCL,
-  	  LCL,
-  	  PLCR,
-  	  LCR
-  	};
-  	static map<State, int> lane_direction;    // lane direction, see vehicle_fsm.cpp for more detail
+public:
+  enum State {
+    KL,
+    PLCL,
+    LCL,
+    PLCR,
+    LCR
+  };
 
-  	State cur_state;            // current fsm state
-  	int cur_lane;               // current lane
-  	double cur_speed;           // current speed
-  	double cur_accel;
-  	int cur_target_lane;        // vehicle's current lane
-  	double cur_target_speed;    // current target speed
+private:
+  static map<State, int> lane_direction;    // lane direction, see vehicle_fsm.cpp for more detail 
+   
+  SensorFusionPredictor *predictor_p;
+  State cur_state;
 
-   	int max_lane;               // max lane number that is drivable
-  	double max_speed;           // max speed of the vehicle
-  	double max_accel;           // max acceleration of the vehicle
-  	double max_jerk;            // max jerk of the vehicle
+  vector<State> successor_states();
+  Behavior get_behavior_for_state(State state, 
+    const TrajectoryEndRef &traj_end_ref, 
+    const vector<vector<double>> &sensor_fusions, double timespan);
 
-  	// constructor
-  	VehicleFSM(const double &max_speed, const double &max_accel, const double &max_jerk, 
-  		       const int &max_lane);
+public:
+  // constructor
+  VehicleFSM(SensorFusionPredictor *predictor);
 
-  	// desctructor
-  	virtual ~VehicleFSM();
+  // desctructor
+  virtual ~VehicleFSM();
 
-  	// check / initialize current state of FSM, including the initial vehicle state
-  	bool is_state_initialized();
-  	void initialize_state(const int &cur_lane, const double &cur_speed, const double &cur_accel);
-
-  private:
-  	bool state_initialized = false;
-
-  	vector<State> successor_states();
+  // Retrieve new behavior
+  Behavior get_behavior(const TrajectoryEndRef &traj_end_ref, 
+      const vector<vector<double>> &sensor_fusions, double timespan);
 };
 
+}
 #endif

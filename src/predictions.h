@@ -25,10 +25,9 @@ private:
 public:
 	const vector<double> get_vehicle_data_by_id(const vector<vector<double>> &sensor_fusion, int id);
 	const vector<double> get_front_vehicle_sf_in_time(const vector<vector<double>> &sensor_fusions, int lane, double min_s, double timespan);
+	const vector<vector<double>> get_near_vehicle_sf_in_time(const vector<vector<double>> &sensor_fusions, int lane, double min_s, double timespan);	
 	const vector<double> get_vehicle_kinematics_in_time(const vector<double> &sensor_fusion, double timespan);
 
-	const vector<double> *get_future_front_vehicle_data(const vector<vector<double>> &sensor_fusion, const vector<double> &ref_data, double timespan);
-	vector<double> vehicle_frenet_state_in_time(const vector<double> &sensor_fusion, double timespan);
 	SensorFusionPredictor(const MapWayPoints &map_waypoints) {this->map_waypoints = map_waypoints;}
 };
 
