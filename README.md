@@ -14,8 +14,11 @@ The module is mainly responsible for generating trajectory given a `Behavior` (s
 This module mainly deals with behavior planning, very similar to what is described in the lecture. For now, very simple
  rules are used for planning behaviors: if there is no car in front, speed up to maximum speed; if there is a leading car, approach the car until the safety buffer is reached; if blocked by the car in front, change lane to left or right if it is safe to do so. One might notice that I previously want to use a weighted sum of costs for each state to determine the priority of states, however, it later turned out that very simple rules defined above is good enough for this particluar project. Thus, some of the cost functions are not used currently.
 
-## common.h
-This module 
+### common.h
+This module contains very useful helper functions, including the ones provided in the original commit, including `getXY`, `getFrenet`, `distance`, etc.
+
+## Putting them all together
+The path planning implementation is very straight forward given the above modules. For each cycle, we first call the `vehicle_fsm` to generate a behavior, taking into account the sensor fusion data and the predictions provided in the predictor module. Then, given the new behavior, we simply use the trajectory generating module to get new trajectory. Note that, for lane changing, I found it best to append the complete lane-change waypoints to the previous waypoints, while for other cases such as following car or keeping lane, it is better to restrict the number of future waypoints to around 40 - 50. I also considered only call `vehicle_fsm` to transfer state every 5 cycles, since that will give us a more consistent and smooth behavior change. However, it turns out generating a behavior every cycle is good enough.
 
 Below is the original README file
 ------------
