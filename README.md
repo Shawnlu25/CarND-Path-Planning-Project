@@ -1,7 +1,11 @@
 # CarND-Path-Planning-Project
 Self-Driving Car Engineer Nanodegree Program
 
-## 
+## Code Structure
+The code structure of the project is listed as follows:
+
+### predictions.cpp / predictions.h
+
 
 
 Below is the original README file
