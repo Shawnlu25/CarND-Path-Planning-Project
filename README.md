@@ -8,8 +8,14 @@ The code structure of the project is listed as follows:
 The module is responsible for, first, predicting a target vehicle's kinematics and pose in near future given the sensor fusion data; second, predicting which cars are in front of our car, or blocking our way to change lane, etc. The class `SensorFusionPredictor` implemented the above functionalities. Note that, this prediction model assumes that the vehicles' velocity and direction would not change in a short period of time. The module also is very conservative in terms of checking 'side vehicles'. If a car on our side is predicted to be within (-20 meters, 40 meters) of our `s` in Frenet coordinates, we would say the car is blocking the side, and we would not perform a lane change in that direction.
 
 ### trajectories.cpp / trajectories.h
+The module is mainly responsible for generating trajectory given a `Behavior` (see class `SplineTrajectoryGenerator`). Spline is used for generating trajectories, since it is simple and very effective. Similar to the project walkthrough on the Udacity website, the module would take two points at the end of the last trajectory generated, then further sample 3 to 4 more points in front of the vehicle, and finally fit the sampled points in to a spline. The new trajectory waypoints is taken on the spline, with velocity and acceleration taken in to account. The trajectory generating process also take into account the Behavior, which consists of these factors: ID of the target lane; ID of the target leading vehicle; target speed, which usually will be the leading vehicle's speed if it is too close, and max speed otherwise; and finally distance to target vehicle. The behaviors are generated in the FSM, which will be described later. In addition to the above functionalities, the module also defines useful constants such as max jerk, max speed, etc. 
 
+### vehicle_fsm.cpp / vehicle_fsm.h
+This module mainly deals with behavior planning, very similar to what is described in the lecture. For now, very simple
+ rules are used for planning behaviors: if there is no car in front, speed up to maximum speed; if there is a leading car, approach the car until the safety buffer is reached; if blocked by the car in front, change lane to left or right if it is safe to do so. One might notice that I previously want to use a weighted sum of costs for each state to determine the priority of states, however, it later turned out that very simple rules defined above is good enough for this particluar project. Thus, some of the cost functions are not used currently.
 
+## common.h
+This module 
 
 Below is the original README file
 ------------
