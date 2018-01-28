@@ -5,6 +5,9 @@ Self-Driving Car Engineer Nanodegree Program
 The code structure of the project is listed as follows:
 
 ### predictions.cpp / predictions.h
+The module is responsible for, first, predicting a target vehicle's kinematics and pose in near future given the sensor fusion data; second, predicting which cars are in front of our car, or blocking our way to change lane, etc. The class `SensorFusionPredictor` implemented the above functionalities. Note that, this prediction model assumes that the vehicles' velocity and direction would not change in a short period of time. The module also is very conservative in terms of checking 'side vehicles'. If a car on our side is predicted to be within (-20 meters, 40 meters) of our `s` in Frenet coordinates, we would say the car is blocking the side, and we would not perform a lane change in that direction.
+
+### trajectories.cpp / trajectories.h
 
 
 
